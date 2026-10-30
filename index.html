@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chess vs Gemmea</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg" />
+    <link rel="apple-touch-icon" href="logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -210,6 +212,20 @@
         font-family: var(--serif);
         font-size: 22px;
         font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      header .brand img {
+        border-radius: 9px;
+        display: block;
+      }
+      .logo-lg {
+        display: block;
+        border-radius: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 10px 30px -10px #000a;
+        animation: pop 0.6s cubic-bezier(0.3, 1.5, 0.5, 1) both;
       }
       header .me {
         display: flex;
@@ -751,6 +767,7 @@
     <!-- AUTH -->
     <section id="auth">
       <div class="auth-card">
+        <img class="logo-lg" src="logo.svg" alt="" width="72" height="72" />
         <h1>Chess vs Gemmea</h1>
         <p class="sub">You play white. Sign in to start a game.</p>
         <div class="tabs">
@@ -779,7 +796,9 @@
     <!-- APP -->
     <section id="app" class="hidden">
       <header>
-        <div class="brand">Chess vs Gemmea</div>
+        <div class="brand">
+          <img src="logo.svg" alt="" width="34" height="34" />Chess vs Gemmea
+        </div>
         <div class="me">
           <span id="stats"></span>
           <span class="chip" id="whoami"></span>
