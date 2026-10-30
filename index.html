@@ -1,0 +1,1663 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chess vs Gemmea</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <style>
+      :root {
+        --ink: #1a1320;
+        --panel: #251b2d;
+        --panel-2: #2f2338;
+        --line: #41314c;
+        --text: #f1e9f3;
+        --muted: #a898b0;
+        --sq-light: #eadfd4;
+        --sq-dark: #8b6b7f;
+        --accent: #f2b84b;
+        --accent-ink: #2a1c05;
+        --danger: #e5566b;
+        --ok: #6fcf97;
+        --bs: min(92vw, 74vh, 640px);
+        --serif: "Fraunces", Georgia, "Times New Roman", serif;
+        --sans:
+          "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+      body {
+        background: var(--ink);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 15px;
+        line-height: 1.45;
+        background-image: radial-gradient(
+          1200px 600px at 75% -10%,
+          #3a2547 0%,
+          transparent 60%
+        );
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+        border: 0;
+        border-radius: 10px;
+        padding: 0.6em 1em;
+        background: var(--panel-2);
+        color: var(--text);
+        transition:
+          background 0.15s,
+          transform 0.1s;
+      }
+      button:hover {
+        background: #3a2c46;
+      }
+      button:active {
+        transform: scale(0.97);
+      }
+      button:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      button.primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+        font-weight: 600;
+      }
+      button.primary:hover {
+        background: #f7c765;
+      }
+      button.danger {
+        background: transparent;
+        color: var(--danger);
+        border: 1px solid #6b2f3c;
+      }
+      button.danger:hover {
+        background: #3a1b25;
+      }
+      button.ghost {
+        background: transparent;
+        color: var(--muted);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      input {
+        font: inherit;
+        width: 100%;
+        padding: 0.7em 0.85em;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #1c1424;
+        color: var(--text);
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin: 14px 0 6px;
+      }
+      h1,
+      h2 {
+        font-family: var(--serif);
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      /* ---------- auth ---------- */
+      #auth {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .auth-card {
+        width: min(420px, 100%);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 32px;
+        animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+      .auth-card h1 {
+        font-size: 34px;
+        line-height: 1.1;
+      }
+      .auth-card p.sub {
+        color: var(--muted);
+        margin: 8px 0 22px;
+      }
+      .tabs {
+        display: flex;
+        gap: 6px;
+        background: #1c1424;
+        padding: 4px;
+        border-radius: 12px;
+        margin-bottom: 6px;
+      }
+      .tabs button {
+        flex: 1;
+        background: transparent;
+        color: var(--muted);
+      }
+      .tabs button.on {
+        background: var(--panel-2);
+        color: var(--text);
+      }
+      .auth-card .submit {
+        width: 100%;
+        margin-top: 22px;
+        padding: 0.8em;
+      }
+      .server-row {
+        margin-top: 18px;
+        font-size: 13px;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+      }
+      .server-row button {
+        padding: 0.3em 0.7em;
+        font-size: 13px;
+      }
+      .err {
+        color: var(--danger);
+        font-size: 13px;
+        min-height: 1.4em;
+        margin-top: 12px;
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(18px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      /* ---------- app ---------- */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px clamp(14px, 3vw, 32px);
+        border-bottom: 1px solid var(--line);
+      }
+      header .brand {
+        font-family: var(--serif);
+        font-size: 22px;
+        font-weight: 700;
+      }
+      header .me {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .chip {
+        background: var(--panel-2);
+        border-radius: 999px;
+        padding: 0.25em 0.75em;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .chip b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      main {
+        display: flex;
+        gap: clamp(16px, 3vw, 36px);
+        justify-content: center;
+        align-items: flex-start;
+        padding: clamp(14px, 3vw, 32px);
+        flex-wrap: wrap;
+      }
+      .board-col {
+        width: var(--bs);
+      }
+      .player {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 4px;
+        transition: opacity 0.3s;
+      }
+      .player .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid #fff3;
+      }
+      .player.w .dot {
+        background: #fbf6ec;
+      }
+      .player.b .dot {
+        background: #2a1f2e;
+      }
+      .player .name {
+        font-weight: 600;
+      }
+      .player .tag {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .player .turn {
+        margin-left: auto;
+        font-size: 13px;
+        color: var(--accent);
+        opacity: 0;
+        transition: opacity 0.25s;
+      }
+      .player.active .turn {
+        opacity: 1;
+      }
+      .player:not(.active) {
+        opacity: 0.7;
+      }
+
+      #board {
+        position: relative;
+        width: var(--bs);
+        height: var(--bs);
+        border-radius: 10px;
+        overflow: hidden;
+        touch-action: none;
+        user-select: none;
+        box-shadow:
+          0 0 0 6px #120c17,
+          0 24px 60px -20px #000c;
+      }
+      #board.shake {
+        animation: shake 0.4s;
+      }
+      @keyframes shake {
+        20% {
+          transform: translateX(-7px);
+        }
+        40% {
+          transform: translateX(6px);
+        }
+        60% {
+          transform: translateX(-4px);
+        }
+        80% {
+          transform: translateX(3px);
+        }
+      }
+      .layer {
+        position: absolute;
+        inset: 0;
+      }
+      #squares {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        grid-template-rows: repeat(8, 1fr);
+      }
+      .sq {
+        position: relative;
+      }
+      .sq.l {
+        background: var(--sq-light);
+      }
+      .sq.d {
+        background: var(--sq-dark);
+      }
+      .sq .file,
+      .sq .rank {
+        position: absolute;
+        font-size: calc(var(--bs) / 50);
+        font-weight: 600;
+        pointer-events: none;
+      }
+      .sq.l .file,
+      .sq.l .rank {
+        color: var(--sq-dark);
+      }
+      .sq.d .file,
+      .sq.d .rank {
+        color: var(--sq-light);
+      }
+      .sq .file {
+        right: 4%;
+        bottom: 2%;
+      }
+      .sq .rank {
+        left: 4%;
+        top: 2%;
+      }
+      .sq.last::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(242, 184, 75, 0.5);
+        animation: fadein 0.35s both;
+      }
+      .sq.sel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(242, 184, 75, 0.7);
+      }
+      .sq.check::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          circle,
+          #ff3b57 0%,
+          rgba(229, 86, 107, 0.7) 35%,
+          transparent 75%
+        );
+        animation: pulse 1.1s infinite;
+      }
+      @keyframes fadein {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.45;
+        }
+      }
+
+      #hints {
+        pointer-events: none;
+        z-index: 1;
+      }
+      .hint {
+        position: absolute;
+        width: 12.5%;
+        height: 12.5%;
+        display: grid;
+        place-items: center;
+      }
+      .hint::after {
+        content: "";
+        width: 28%;
+        height: 28%;
+        border-radius: 50%;
+        background: rgba(26, 19, 32, 0.38);
+        animation: hintin 0.25s both;
+      }
+      .hint.cap::after {
+        width: 88%;
+        height: 88%;
+        background: transparent;
+        border: calc(var(--bs) / 90) solid rgba(26, 19, 32, 0.38);
+      }
+      @keyframes hintin {
+        from {
+          transform: scale(0.2);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      #pieces {
+        z-index: 2;
+      }
+      .piece {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 12.5%;
+        height: 12.5%;
+        display: grid;
+        place-items: center;
+        cursor: grab;
+        transition: transform 0.42s cubic-bezier(0.25, 0.9, 0.3, 1);
+        will-change: transform;
+        z-index: 2;
+      }
+      .piece.mine {
+        cursor: grab;
+      }
+      .piece.moving {
+        z-index: 6;
+      }
+      .piece.dragging {
+        transition: none;
+        z-index: 10;
+        cursor: grabbing;
+      }
+      .g {
+        font-size: calc(var(--bs) / 8 * 0.84);
+        line-height: 1;
+        font-family:
+          "Noto Sans Symbols 2", "Segoe UI Symbol", "Apple Symbols",
+          "DejaVu Sans", sans-serif;
+        -webkit-text-stroke: calc(var(--bs) / 420) #2a1b20;
+        paint-order: stroke fill;
+        transition:
+          transform 0.18s ease,
+          filter 0.18s ease;
+        pointer-events: none;
+      }
+      .piece.w .g {
+        color: #fbf6ec;
+        filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.35));
+      }
+      .piece.b .g {
+        color: #2a1f2e;
+        -webkit-text-stroke-color: #0b0710;
+        filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.4));
+      }
+      .piece.sel .g {
+        transform: translateY(-6%) scale(1.14);
+        filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.45));
+      }
+      .piece.dragging .g {
+        transform: scale(1.25);
+        filter: drop-shadow(0 12px 8px rgba(0, 0, 0, 0.5));
+      }
+      .piece.enter .g {
+        animation: pop 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+        animation-delay: var(--d, 0s);
+      }
+      .piece.captured {
+        pointer-events: none;
+        z-index: 1;
+      }
+      .piece.captured .g {
+        animation: cap 0.38s ease-in forwards;
+        animation-delay: 0.14s;
+      }
+      .piece.promote .g {
+        animation: promo 0.7s ease-out;
+      }
+      @keyframes pop {
+        from {
+          transform: scale(0) rotate(-25deg);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      @keyframes cap {
+        35% {
+          transform: scale(1.3) rotate(8deg);
+          opacity: 1;
+        }
+        to {
+          transform: scale(0) rotate(40deg);
+          opacity: 0;
+        }
+      }
+      @keyframes promo {
+        0% {
+          transform: scale(0.4) rotate(-180deg);
+          filter: brightness(2.4);
+        }
+        60% {
+          transform: scale(1.35);
+        }
+        100% {
+          transform: none;
+          filter: none;
+        }
+      }
+
+      .panel {
+        width: min(340px, 92vw);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .status {
+        font-family: var(--serif);
+        font-size: 22px;
+        min-height: 1.3em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .status .dots span {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        margin-right: 3px;
+        animation: bounce 1s infinite;
+      }
+      .status .dots span:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      .status .dots span:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+      @keyframes bounce {
+        0%,
+        60%,
+        100% {
+          transform: none;
+          opacity: 0.4;
+        }
+        30% {
+          transform: translateY(-6px);
+          opacity: 1;
+        }
+      }
+      .moves {
+        background: #1c1424;
+        border-radius: 12px;
+        height: 220px;
+        overflow: auto;
+        padding: 8px 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      .moves:empty::before {
+        content: "Moves will appear here.";
+        color: var(--muted);
+      }
+      .mrow {
+        display: grid;
+        grid-template-columns: 2.2em 1fr 1fr;
+        padding: 3px 0;
+      }
+      .mrow .n {
+        color: var(--muted);
+      }
+      .mrow .m {
+        animation: fadein 0.4s both;
+      }
+      .btns {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .btns button {
+        flex: 1;
+      }
+
+      /* ---------- overlays ---------- */
+      .scrim {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 6, 14, 0.7);
+        backdrop-filter: blur(4px);
+        display: grid;
+        place-items: center;
+        z-index: 50;
+        padding: 20px;
+        animation: fadein 0.2s both;
+      }
+      .modal {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 28px;
+        width: min(420px, 100%);
+        text-align: center;
+        animation: modal 0.4s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+      }
+      @keyframes modal {
+        from {
+          transform: scale(0.85) translateY(10px);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .modal h2 {
+        font-size: 34px;
+      }
+      .modal p {
+        color: var(--muted);
+        margin: 8px 0 22px;
+      }
+      .modal .btns {
+        justify-content: center;
+      }
+      .promo-row {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 16px;
+      }
+      .promo-row button {
+        width: 72px;
+        height: 72px;
+        font-size: 46px;
+        padding: 0;
+        line-height: 1;
+        background: var(--panel-2);
+        color: #fbf6ec;
+        -webkit-text-stroke: 1px #2a1b20;
+        font-family:
+          "Noto Sans Symbols 2", "Segoe UI Symbol", "Apple Symbols", sans-serif;
+      }
+      .promo-row button:hover {
+        background: var(--accent);
+        transform: translateY(-4px);
+      }
+      .glist {
+        max-height: 55vh;
+        overflow: auto;
+        text-align: left;
+        margin-top: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .grow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #1c1424;
+        border-radius: 12px;
+        padding: 10px 12px;
+      }
+      .grow .info {
+        flex: 1;
+        min-width: 0;
+      }
+      .grow .info small {
+        color: var(--muted);
+        display: block;
+      }
+      .badge {
+        font-size: 12px;
+        border-radius: 999px;
+        padding: 0.15em 0.6em;
+        background: var(--panel-2);
+        color: var(--muted);
+      }
+      .badge.IN_PROGRESS {
+        color: var(--ok);
+      }
+      .badge.WIN {
+        color: var(--accent);
+      }
+      .badge.LOST {
+        color: var(--danger);
+      }
+      .grow button {
+        padding: 0.35em 0.7em;
+        font-size: 13px;
+      }
+
+      #toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%) translateY(20px);
+        background: #3a1b25;
+        color: #ffd7de;
+        border: 1px solid #6b2f3c;
+        padding: 0.7em 1.1em;
+        border-radius: 12px;
+        opacity: 0;
+        pointer-events: none;
+        transition: 0.3s;
+        z-index: 100;
+        max-width: 90vw;
+      }
+      #toast.show {
+        opacity: 1;
+        transform: translateX(-50%);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.01ms !important;
+          animation-delay: 0s !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- AUTH -->
+    <section id="auth">
+      <div class="auth-card">
+        <h1>Chess vs Gemmea</h1>
+        <p class="sub">You play white. Sign in to start a game.</p>
+        <div class="tabs">
+          <button id="tab-login" class="on" type="button">Log in</button>
+          <button id="tab-signup" type="button">Sign up</button>
+        </div>
+        <div id="f-username" class="hidden">
+          <label for="username">Username</label
+          ><input id="username" autocomplete="username" />
+        </div>
+        <label for="email">Email</label
+        ><input id="email" type="email" autocomplete="email" />
+        <label for="password">Password</label
+        ><input id="password" type="password" autocomplete="current-password" />
+        <div id="f-confirm" class="hidden">
+          <label for="confirm">Confirm password</label
+          ><input id="confirm" type="password" autocomplete="new-password" />
+        </div>
+        <div class="err" id="auth-err"></div>
+        <button class="primary submit" id="auth-submit" type="button">
+          Log in
+        </button>
+      </div>
+    </section>
+
+    <!-- APP -->
+    <section id="app" class="hidden">
+      <header>
+        <div class="brand">Chess vs Gemmea</div>
+        <div class="me">
+          <span id="stats"></span>
+          <span class="chip" id="whoami"></span>
+          <button class="ghost" id="btn-games" type="button">My games</button>
+          <button class="ghost" id="btn-logout" type="button">Log out</button>
+        </div>
+      </header>
+      <main>
+        <div class="board-col">
+          <div class="player b" id="p-black">
+            <span class="dot"></span><span class="name">Gemmea</span
+            ><span class="tag">black</span><span class="turn">thinking</span>
+          </div>
+          <div id="board">
+            <div class="layer" id="squares"></div>
+            <div class="layer" id="hints"></div>
+            <div class="layer" id="pieces"></div>
+          </div>
+          <div class="player w" id="p-white">
+            <span class="dot"></span
+            ><span class="name" id="white-name">You</span
+            ><span class="tag">white</span><span class="turn">your move</span>
+          </div>
+        </div>
+        <aside class="panel">
+          <div class="status" id="status">Start a game</div>
+          <div class="moves" id="moves"></div>
+          <div class="btns">
+            <button class="primary" id="btn-new" type="button">New game</button>
+            <button class="danger" id="btn-resign" type="button">Resign</button>
+          </div>
+        </aside>
+      </main>
+    </section>
+
+    <div id="toast" role="status"></div>
+
+    <script>
+      /* =========================================================
+   Config + state
+   ========================================================= */
+      const LS = {
+        get: (k, d) => {
+          try {
+            return localStorage.getItem(k) ?? d;
+          } catch {
+            return d;
+          }
+        },
+        set: (k, v) => {
+          try {
+            localStorage.setItem(k, v);
+          } catch {}
+        },
+        del: (k) => {
+          try {
+            localStorage.removeItem(k);
+          } catch {}
+        },
+      };
+      const S = {
+        base: "https://chess-game-lilac-six.vercel.app", // fixed server, not user-changeable
+        token: LS.get("chess_token", ""),
+        username: LS.get("chess_user", ""),
+        chess: new Chess(),
+        gameId: null,
+        pieces: {}, // square -> element
+        sqEls: {}, // square -> element
+        selected: null,
+        legal: [],
+        sans: [],
+        busy: false,
+        over: false,
+        last: null,
+        uid: 0,
+      };
+      const $ = (id) => document.getElementById(id);
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const FILES = "abcdefgh";
+      const GLYPH = {
+        k: "\u265A\uFE0E",
+        q: "\u265B\uFE0E",
+        r: "\u265C\uFE0E",
+        b: "\u265D\uFE0E",
+        n: "\u265E\uFE0E",
+        p: "\u265F\uFE0E",
+      };
+
+      /* =========================================================
+   API
+   ========================================================= */
+      async function api(path, { method = "GET", body } = {}) {
+        const headers = {};
+        const isAuth = path.startsWith("/auth/");
+        if (S.token && !isAuth) headers.Authorization = "Bearer " + S.token;
+        if (body) headers["Content-Type"] = "application/json";
+        let res;
+        try {
+          res = await fetch(S.base + path, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined,
+          });
+        } catch (e) {
+          throw new Error(
+            "Cannot reach the server at " +
+              S.base +
+              ". Is it running, and is CORS enabled?",
+          );
+        }
+        let json = null;
+        try {
+          json = await res.json();
+        } catch {}
+        if (!res.ok) {
+          if (res.status === 401 && S.token && !isAuth) {
+            logout();
+          }
+          const m = json && json.message;
+          const text = Array.isArray(m)
+            ? m.join(", ")
+            : m || res.statusText || "Request failed";
+          console.warn("API error", method, path, res.status, json);
+          throw new Error(`${text} (${method} ${path} → ${res.status})`);
+        }
+        return json;
+      }
+      const dataOf = (r) => (r && r.data !== undefined ? r.data : r);
+
+      function pickToken(d) {
+        if (typeof d === "string") return d;
+        if (!d) return null;
+        return (
+          d.accessToken ||
+          d.access_token ||
+          d.token ||
+          d.jwt ||
+          d.accessTocken ||
+          null
+        );
+      }
+      const pickFen = (g) =>
+        (g && (g.gameBoard || g.fen || g.board || g.currentFen)) || null;
+
+      /* =========================================================
+   Toast
+   ========================================================= */
+      let toastT;
+      function toast(msg) {
+        const t = $("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(toastT);
+        toastT = setTimeout(() => t.classList.remove("show"), 4200);
+      }
+
+      /* =========================================================
+   Auth UI
+   ========================================================= */
+      let mode = "login";
+      function setMode(m) {
+        mode = m;
+        $("tab-login").classList.toggle("on", m === "login");
+        $("tab-signup").classList.toggle("on", m === "signup");
+        $("f-username").classList.toggle("hidden", m !== "signup");
+        $("f-confirm").classList.toggle("hidden", m !== "signup");
+        $("auth-submit").textContent =
+          m === "login" ? "Log in" : "Create account";
+        $("password").autocomplete =
+          m === "login" ? "current-password" : "new-password";
+        $("auth-err").textContent = "";
+      }
+      $("tab-login").onclick = () => setMode("login");
+      $("tab-signup").onclick = () => setMode("signup");
+
+      async function login(email, password) {
+        const res = await api("/auth/login", {
+          method: "POST",
+          body: { email, password },
+        });
+        const token = pickToken(dataOf(res));
+        if (!token) {
+          console.log("Login response:", res);
+          throw new Error(
+            "Logged in, but no token was found in the response (see console).",
+          );
+        }
+        S.token = token;
+        LS.set("chess_token", token);
+      }
+      $("auth-submit").onclick = async () => {
+        const err = $("auth-err");
+        err.textContent = "";
+        const email = $("email").value.trim(),
+          password = $("password").value;
+        const btn = $("auth-submit");
+        btn.disabled = true;
+        try {
+          if (mode === "signup") {
+            const username = $("username").value.trim(),
+              confirmPassword = $("confirm").value;
+            await api("/auth/signup", {
+              method: "POST",
+              body: { username, email, password, confirmPassword },
+            });
+          }
+          await login(email, password);
+          await enterApp();
+        } catch (e) {
+          err.textContent = e.message;
+        } finally {
+          btn.disabled = false;
+        }
+      };
+      ["email", "password", "confirm", "username"].forEach((id) =>
+        $(id).addEventListener("keydown", (e) => {
+          if (e.key === "Enter") $("auth-submit").click();
+        }),
+      );
+
+      function logout() {
+        S.token = "";
+        LS.del("chess_token");
+        LS.del("chess_user");
+        S.gameId = null;
+        $("app").classList.add("hidden");
+        $("auth").classList.remove("hidden");
+      }
+      $("btn-logout").onclick = logout;
+
+      /* =========================================================
+   Enter app / profile
+   ========================================================= */
+      async function enterApp() {
+        $("auth").classList.add("hidden");
+        $("app").classList.remove("hidden");
+        buildBoard();
+        renderFresh();
+        setStatus("Start a game");
+        loadProfile();
+        // resume the latest in-progress game, if there is one
+        try {
+          const list = asArray(dataOf(await api("/game")));
+          const active = list.filter((g) => g.status === "IN_PROGRESS");
+          if (active.length) {
+            active.sort(
+              (a, b) =>
+                new Date(b.createdAt || b.updatedAt || 0) -
+                new Date(a.createdAt || a.updatedAt || 0),
+            );
+            await openGame(active[0].id);
+          } else {
+            showStartOverlay();
+          }
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+      const asArray = (d) =>
+        Array.isArray(d) ? d : (d && (d.games || d.items || d.data)) || [];
+
+      async function loadProfile() {
+        try {
+          const u = dataOf(await api("/user"));
+          const name = u.username || u.name || "You";
+          S.username = name;
+          LS.set("chess_user", name);
+          $("whoami").textContent = name;
+          $("white-name").textContent = name;
+          const src = u.stats || u.statistics || u.userStats || u;
+          const keys = ["wins", "losses", "draws", "gamesPlayed", "totalGames"];
+          const wrap = $("stats");
+          wrap.innerHTML = "";
+          keys.forEach((k) => {
+            if (typeof src[k] === "number") {
+              const c = document.createElement("span");
+              c.className = "chip";
+              c.innerHTML =
+                k.replace(/([A-Z])/g, " $1").toLowerCase() +
+                " <b>" +
+                src[k] +
+                "</b>";
+              wrap.appendChild(c);
+              wrap.appendChild(document.createTextNode(" "));
+            }
+          });
+        } catch (e) {
+          $("whoami").textContent = S.username || "";
+          $("white-name").textContent = S.username || "You";
+        }
+      }
+
+      /* =========================================================
+   Board construction + rendering
+   ========================================================= */
+      function buildBoard() {
+        const sq = $("squares");
+        sq.innerHTML = "";
+        S.sqEls = {};
+        for (let row = 0; row < 8; row++)
+          for (let col = 0; col < 8; col++) {
+            const name = FILES[col] + (8 - row);
+            const d = document.createElement("div");
+            d.className = "sq " + ((row + col) % 2 === 0 ? "l" : "d");
+            d.dataset.sq = name;
+            if (row === 7) {
+              const f = document.createElement("span");
+              f.className = "file";
+              f.textContent = FILES[col];
+              d.appendChild(f);
+            }
+            if (col === 0) {
+              const r = document.createElement("span");
+              r.className = "rank";
+              r.textContent = 8 - row;
+              d.appendChild(r);
+            }
+            sq.appendChild(d);
+            S.sqEls[name] = d;
+          }
+      }
+      function setPos(el, sq) {
+        const col = FILES.indexOf(sq[0]),
+          row = 8 - parseInt(sq[1], 10);
+        el.style.transform = `translate(${col * 100}%, ${row * 100}%)`;
+        el.dataset.sq = sq;
+      }
+      function makePiece(type, color, sq, enterDelay) {
+        const el = document.createElement("div");
+        el.className = `piece ${color}` + (enterDelay != null ? " enter" : "");
+        if (enterDelay != null) el.style.setProperty("--d", enterDelay + "s");
+        el.dataset.type = type;
+        const g = document.createElement("span");
+        g.className = "g";
+        g.textContent = GLYPH[type];
+        el.appendChild(g);
+        setPos(el, sq);
+        $("pieces").appendChild(el);
+        return el;
+      }
+      function renderFresh(animate = true) {
+        $("pieces").innerHTML = "";
+        S.pieces = {};
+        const b = S.chess.board();
+        let i = 0;
+        for (let r = 0; r < 8; r++)
+          for (let c = 0; c < 8; c++) {
+            const p = b[r][c];
+            if (!p) continue;
+            const sq = FILES[c] + (8 - r);
+            S.pieces[sq] = makePiece(
+              p.type,
+              p.color,
+              sq,
+              animate ? c * 0.025 + (7 - r) * 0.02 : null,
+            );
+          }
+        clearSel();
+        setLast(null);
+        updateCheck();
+        renderMoves();
+        updateTurnUI();
+      }
+
+      function clearSel() {
+        if (S.selected && S.pieces[S.selected])
+          S.pieces[S.selected].classList.remove("sel");
+        if (S.selected && S.sqEls[S.selected])
+          S.sqEls[S.selected].classList.remove("sel");
+        S.selected = null;
+        S.legal = [];
+        $("hints").innerHTML = "";
+      }
+      function select(sq) {
+        clearSel();
+        S.selected = sq;
+        S.legal = S.chess.moves({ square: sq, verbose: true });
+        S.pieces[sq] && S.pieces[sq].classList.add("sel");
+        S.sqEls[sq].classList.add("sel");
+        const h = $("hints");
+        const seen = new Set();
+        S.legal.forEach((m) => {
+          if (seen.has(m.to)) return;
+          seen.add(m.to);
+          const d = document.createElement("div");
+          d.className =
+            "hint" +
+            (m.flags.includes("c") || m.flags.includes("e") ? " cap" : "");
+          const col = FILES.indexOf(m.to[0]),
+            row = 8 - parseInt(m.to[1], 10);
+          d.style.left = col * 12.5 + "%";
+          d.style.top = row * 12.5 + "%";
+          h.appendChild(d);
+        });
+      }
+      function setLast(m) {
+        if (S.last)
+          S.last.forEach(
+            (s) => S.sqEls[s] && S.sqEls[s].classList.remove("last"),
+          );
+        S.last = m ? [m.from, m.to] : null;
+        if (m) {
+          void document.body.offsetWidth;
+          S.last.forEach((s) => S.sqEls[s].classList.add("last"));
+        }
+      }
+      function updateCheck() {
+        document
+          .querySelectorAll(".sq.check")
+          .forEach((e) => e.classList.remove("check"));
+        if (!S.chess.in_check()) return;
+        const turn = S.chess.turn(),
+          b = S.chess.board();
+        for (let r = 0; r < 8; r++)
+          for (let c = 0; c < 8; c++) {
+            const p = b[r][c];
+            if (p && p.type === "k" && p.color === turn)
+              S.sqEls[FILES[c] + (8 - r)].classList.add("check");
+          }
+      }
+
+      /* =========================================================
+   Move animation
+   ========================================================= */
+      async function animateMove(m) {
+        const el = S.pieces[m.from];
+        if (!el) {
+          renderFresh(false);
+          return;
+        }
+        el.classList.add("moving");
+
+        // captures
+        let capSq = null;
+        if (m.flags.includes("e")) capSq = m.to[0] + m.from[1];
+        else if (m.flags.includes("c")) capSq = m.to;
+        if (capSq && S.pieces[capSq]) {
+          const cap = S.pieces[capSq];
+          delete S.pieces[capSq];
+          cap.classList.add("captured");
+          setTimeout(() => cap.remove(), 650);
+        }
+        // castling: slide the rook too
+        if (m.flags.includes("k") || m.flags.includes("q")) {
+          const rank = m.from[1];
+          const [rf, rt] = m.flags.includes("k")
+            ? ["h" + rank, "f" + rank]
+            : ["a" + rank, "d" + rank];
+          const rook = S.pieces[rf];
+          if (rook) {
+            delete S.pieces[rf];
+            S.pieces[rt] = rook;
+            setPos(rook, rt);
+          }
+        }
+        delete S.pieces[m.from];
+        S.pieces[m.to] = el;
+        setPos(el, m.to);
+
+        await sleep(430);
+        el.classList.remove("moving");
+
+        if (m.promotion) {
+          el.dataset.type = m.promotion;
+          el.querySelector(".g").textContent = GLYPH[m.promotion];
+          el.classList.add("promote");
+          setTimeout(() => el.classList.remove("promote"), 750);
+          await sleep(300);
+        }
+        setLast(m);
+        updateCheck();
+      }
+
+      /* =========================================================
+   Move list + status
+   ========================================================= */
+      function renderMoves() {
+        const box = $("moves");
+        box.innerHTML = "";
+        for (let i = 0; i < S.sans.length; i += 2) {
+          const row = document.createElement("div");
+          row.className = "mrow";
+          row.innerHTML = `<span class="n">${i / 2 + 1}.</span><span class="m">${S.sans[i]}</span><span class="m">${S.sans[i + 1] || ""}</span>`;
+          box.appendChild(row);
+        }
+        box.scrollTop = box.scrollHeight;
+      }
+      function setStatus(text, thinking = false) {
+        const s = $("status");
+        s.innerHTML = "";
+        s.append(text);
+        if (thinking) {
+          const d = document.createElement("span");
+          d.className = "dots";
+          d.innerHTML = "<span></span><span></span><span></span>";
+          s.appendChild(d);
+        }
+      }
+      function updateTurnUI() {
+        const whiteTurn = S.chess.turn() === "w";
+        $("p-white").classList.toggle(
+          "active",
+          !!S.gameId && !S.over && whiteTurn && !S.busy,
+        );
+        $("p-black").classList.toggle(
+          "active",
+          !!S.gameId && !S.over && (S.busy || !whiteTurn),
+        );
+      }
+
+      /* =========================================================
+   Playing
+   ========================================================= */
+      function canPlay() {
+        return S.gameId && !S.busy && !S.over && S.chess.turn() === "w";
+      }
+
+      async function tryMove(from, to) {
+        const cands = S.legal.filter((m) => m.from === from && m.to === to);
+        if (!cands.length) {
+          if (S.pieces[from]) setPos(S.pieces[from], from);
+          return;
+        }
+        let promo;
+        if (cands.some((m) => m.promotion)) promo = await pickPromotion();
+        playMove(from, to, promo);
+      }
+
+      async function playMove(from, to, promo) {
+        S.busy = true;
+        clearSel();
+        const m = S.chess.move({ from, to, promotion: promo || "q" });
+        if (!m) {
+          S.busy = false;
+          return;
+        }
+        S.sans.push(m.san);
+        renderMoves();
+        updateTurnUI();
+        await animateMove(m);
+        setStatus("Gemmea is thinking", true);
+
+        const body = { from, to, san: m.san };
+        if (m.promotion) body.promotion = m.promotion;
+        let d;
+        try {
+          d = dataOf(
+            await api(`/game/${S.gameId}/moves`, { method: "POST", body }),
+          );
+        } catch (e) {
+          // server refused the move: roll back
+          S.chess.undo();
+          S.sans.pop();
+          renderFresh(false);
+          const b = $("board");
+          b.classList.remove("shake");
+          void b.offsetWidth;
+          b.classList.add("shake");
+          S.busy = false;
+          updateTurnUI();
+          setStatus("Your move");
+          toast(e.message);
+          return;
+        }
+
+        const fen = pickFen(d);
+        if (fen) await syncTo(fen);
+
+        S.busy = false;
+        const status = d && d.status;
+        if (status && status !== "IN_PROGRESS") finish(status, d.gameResult);
+        else {
+          setStatus(S.chess.in_check() ? "Check! Your move" : "Your move");
+        }
+        updateTurnUI();
+      }
+
+      /* Bring local board to server FEN, animating the AI's reply */
+      async function syncTo(fen) {
+        const key = (f) => f.split(" ").slice(0, 2).join(" ");
+        const target = key(fen);
+        if (key(S.chess.fen()) === target) return;
+        for (const mv of S.chess.moves({ verbose: true })) {
+          const t = new Chess(S.chess.fen());
+          t.move({ from: mv.from, to: mv.to, promotion: mv.promotion });
+          if (key(t.fen()) === target) {
+            await sleep(250);
+            const m = S.chess.move({
+              from: mv.from,
+              to: mv.to,
+              promotion: mv.promotion,
+            });
+            S.sans.push(m.san);
+            renderMoves();
+            await animateMove(m);
+            return;
+          }
+        }
+        // couldn't explain the difference with one move: hard resync
+        if (S.chess.load(fen)) renderFresh(false);
+      }
+
+      function finish(status, result) {
+        S.over = true;
+        S.busy = false;
+        clearSel();
+        updateTurnUI();
+        const T = {
+          WIN: ["You win", "Checkmate. Nicely played."],
+          LOST: ["You lost", "Gemmea won this one."],
+          DRAW: ["Draw", "The game ended in a draw."],
+          STALEMATE: ["Stalemate", "No legal moves, no check. It’s a draw."],
+          ABANDODNED: ["Game abandoned", "This game was abandoned."],
+        };
+        const [title, sub0] = T[status] || [status, ""];
+        let sub = sub0;
+        if (typeof result === "string" && result) sub = result;
+        else if (result && typeof result === "object")
+          sub = result.reason || result.message || sub0;
+        setStatus(title);
+        setTimeout(() => showResult(title, sub), 500);
+      }
+
+      /* =========================================================
+   Pointer input (click-to-move + drag)
+   ========================================================= */
+      let drag = null;
+      function sqFromEvent(e) {
+        const r = $("board").getBoundingClientRect();
+        const c = Math.floor(((e.clientX - r.left) / r.width) * 8),
+          rw = Math.floor(((e.clientY - r.top) / r.height) * 8);
+        if (c < 0 || c > 7 || rw < 0 || rw > 7) return null;
+        return FILES[c] + (8 - rw);
+      }
+      $("board").addEventListener("pointerdown", (e) => {
+        if (!canPlay()) return;
+        const sq = sqFromEvent(e);
+        if (!sq) return;
+        const p = S.chess.get(sq);
+        const mine = p && p.color === "w";
+        if (S.selected && !mine && S.legal.some((m) => m.to === sq)) {
+          tryMove(S.selected, sq);
+          return;
+        }
+        if (mine) {
+          select(sq);
+          drag = {
+            sq,
+            el: S.pieces[sq],
+            sx: e.clientX,
+            sy: e.clientY,
+            moved: false,
+          };
+          $("board").setPointerCapture(e.pointerId);
+        } else clearSel();
+      });
+      $("board").addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        if (
+          !drag.moved &&
+          Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 5
+        ) {
+          drag.moved = true;
+          drag.el.classList.add("dragging");
+        }
+        if (drag.moved) {
+          const r = $("board").getBoundingClientRect(),
+            s = r.width / 8;
+          drag.el.style.transform = `translate(${e.clientX - r.left - s / 2}px, ${e.clientY - r.top - s / 2}px)`;
+        }
+      });
+      function endDrag(e) {
+        if (!drag) return;
+        const d = drag;
+        drag = null;
+        d.el.classList.remove("dragging");
+        if (!d.moved) return;
+        const sq = sqFromEvent(e);
+        if (sq && sq !== d.sq && S.legal.some((m) => m.to === sq))
+          tryMove(d.sq, sq);
+        else setPos(d.el, d.sq);
+      }
+      $("board").addEventListener("pointerup", endDrag);
+      $("board").addEventListener("pointercancel", endDrag);
+
+      /* =========================================================
+   Modals
+   ========================================================= */
+      function modal(html) {
+        const s = document.createElement("div");
+        s.className = "scrim";
+        s.innerHTML = `<div class="modal">${html}</div>`;
+        document.body.appendChild(s);
+        return s;
+      }
+      function pickPromotion() {
+        return new Promise((res) => {
+          const s = modal(
+            `<h2>Promote to</h2><div class="promo-row">${["q", "r", "b", "n"].map((t) => `<button data-t="${t}" type="button" aria-label="${t}">${GLYPH[t]}</button>`).join("")}</div>`,
+          );
+          s.querySelectorAll("button").forEach(
+            (b) =>
+              (b.onclick = () => {
+                s.remove();
+                res(b.dataset.t);
+              }),
+          );
+        });
+      }
+      function showResult(title, sub) {
+        const s = modal(
+          `<h2>${title}</h2><p>${sub}</p><div class="btns"><button class="ghost" data-a="close" type="button">View board</button><button class="primary" data-a="new" type="button">Play again</button></div>`,
+        );
+        s.querySelector("[data-a=close]").onclick = () => s.remove();
+        s.querySelector("[data-a=new]").onclick = () => {
+          s.remove();
+          newGame();
+        };
+      }
+      function showStartOverlay() {
+        const s = modal(
+          `<h2>Ready?</h2><p>You’re white, so you move first.</p><div class="btns"><button class="primary" type="button">Start game</button></div>`,
+        );
+        s.querySelector("button").onclick = () => {
+          s.remove();
+          newGame();
+        };
+      }
+
+      /* =========================================================
+   Game management
+   ========================================================= */
+      async function newGame() {
+        if (S.busy) return;
+        // clean up an untouched game so the list doesn't fill with empty ones
+        if (S.gameId && !S.over && S.sans.length === 0) {
+          try {
+            await api(`/game/${S.gameId}/abandon`, { method: "DELETE" });
+          } catch {}
+        }
+        try {
+          const d = dataOf(
+            await api("/game", {
+              method: "POST",
+              body: { mode: "VS_AI", playerColor: "WHITE", ai_Agent: "GEMMEA" },
+            }),
+          );
+          S.gameId = d.id ?? d.gameId ?? (d.game && d.game.id);
+          if (S.gameId == null) {
+            console.log("Create game response:", d);
+            throw new Error(
+              "Game created, but no id was found in the response (see console).",
+            );
+          }
+          S.chess = new Chess();
+          S.sans = [];
+          S.over = false;
+          S.busy = false;
+          renderFresh(true);
+          setStatus("Your move");
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+
+      async function openGame(id) {
+        try {
+          const g = dataOf(await api(`/game/${id}`));
+          const fen = pickFen(g);
+          S.chess = new Chess();
+          if (fen && !S.chess.load(fen)) S.chess = new Chess();
+          S.gameId = g.id ?? id;
+          const hist = g.moves || g.moveHistory || g.history || [];
+          S.sans = Array.isArray(hist)
+            ? hist.map((m) =>
+                typeof m === "string" ? m : m.san || m.from + m.to,
+              )
+            : [];
+          S.over = !!g.status && g.status !== "IN_PROGRESS";
+          S.busy = false;
+          renderFresh(true);
+          if (S.over)
+            setStatus(
+              "Game finished (" +
+                g.status.toLowerCase().replace("_", " ") +
+                ")",
+            );
+          else if (S.chess.turn() !== "w") setStatus("Waiting for Gemmea");
+          else setStatus("Your move");
+        } catch (e) {
+          toast(e.message);
+        }
+      }
+
+      $("btn-new").onclick = newGame;
+      $("btn-resign").onclick = async () => {
+        if (!S.gameId || S.over || S.busy) return;
+        if (!confirm("Resign this game?")) return;
+        try {
+          const d = dataOf(
+            await api(`/game/${S.gameId}/resign`, { method: "POST" }),
+          );
+          finish(
+            d && d.status && d.status !== "IN_PROGRESS" ? d.status : "LOST",
+            d && d.gameResult,
+          );
+          loadProfile();
+        } catch (e) {
+          toast(e.message);
+        }
+      };
+
+      $("btn-games").onclick = async () => {
+        let list;
+        try {
+          list = asArray(dataOf(await api("/game")));
+        } catch (e) {
+          toast(e.message);
+          return;
+        }
+        list.sort(
+          (a, b) =>
+            new Date(b.createdAt || b.updatedAt || 0) -
+            new Date(a.createdAt || a.updatedAt || 0),
+        );
+        const s = modal(
+          `<h2>My games</h2><div class="glist"></div><div class="btns" style="margin-top:18px"><button class="ghost" type="button">Close</button></div>`,
+        );
+        s.querySelector(".btns button").onclick = () => s.remove();
+        const box = s.querySelector(".glist");
+        if (!list.length)
+          box.innerHTML =
+            '<p style="text-align:center;margin:12px 0">No games yet.</p>';
+        list.forEach((g) => {
+          const row = document.createElement("div");
+          row.className = "grow";
+          const date = g.createdAt
+            ? new Date(g.createdAt).toLocaleString()
+            : "";
+          row.innerHTML = `<div class="info"><span class="badge ${g.status}">${(g.status || "").toLowerCase().replace("_", " ")}</span><small>${date || "Game " + g.id}</small></div>`;
+          const open = document.createElement("button");
+          open.type = "button";
+          open.textContent = g.status === "IN_PROGRESS" ? "Resume" : "View";
+          open.onclick = () => {
+            s.remove();
+            openGame(g.id);
+          };
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "danger";
+          del.textContent = "Delete";
+          del.onclick = async () => {
+            if (!confirm("Delete this game?")) return;
+            try {
+              await api(`/game/${g.id}`, { method: "DELETE" });
+              row.remove();
+              if (String(g.id) === String(S.gameId)) {
+                S.gameId = null;
+                S.over = false;
+                S.chess = new Chess();
+                S.sans = [];
+                renderFresh(false);
+                setStatus("Start a game");
+              }
+            } catch (e) {
+              toast(e.message);
+            }
+          };
+          row.append(open, del);
+          box.appendChild(row);
+        });
+      };
+
+      /* =========================================================
+   Boot
+   ========================================================= */
+      $("email").focus();
+      if (S.token) enterApp();
+    </script>
+  </body>
+</html>
